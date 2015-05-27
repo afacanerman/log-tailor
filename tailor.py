@@ -1,63 +1,44 @@
 #!/usr/bin/env python
 
-import Queue
 import threading
 import time, os
 from os import walk
+from tailorThread import tailorThread
 
 exitFlag = 0
 
-class tailorThread (threading.Thread):
-    
-    def __init__(self, threadID, filePath):
-        threading.Thread.__init__(self)
-        self.threadID = threadID
-        self.filePath = filePath
+
+class tailor ():
+
+    def __init__(self):
+        self.threads = []
+        self.threadID = 1
+        self.logFiles = []
+        self.environmentPath = ''
+
+    def kill(self):   
+        for trd in self.threads:
+            trd.kill()    
 
     def run(self):
-        print "Starting " + self.filePath
-        process_data("T" + str(self.threadID), self.filePath)
-        print "Exiting " + self.filePath
+               
+        # Find log files
+        for (dirpath, dirnames, filenames) in walk('./log-files/'):
+            self.logFiles.extend(filenames)
+            self.environmentPath = dirpath
+            break
 
-def process_data(threadName, filePath):
-    while not exitFlag:
-        #Set the filename and open the file
-        file = open(filePath,'r')
+        # Create new threads
+        for lfile in self.logFiles:
+            print lfile
+            thread = tailorThread(self.threadID, self.environmentPath+lfile)
+            thread.daemon=True
+            thread.start()
+            self.threads.append(thread)
+            self.threadID += 1
 
-        #Find the size of the file and move to the end
-        st_results = os.stat(filePath)
-        st_size = st_results[6]
-        file.seek(st_size)
+tail = tailor();
+tail.run();
 
-        while 1:
-            where = file.tell()
-            line = file.readline()
-            if not line:
-                time.sleep(1)
-                file.seek(where)
-            else:
-                if len(line) > 1:
-                    print "%s : %s" % (threadName, line) # already has newline
-                    time.sleep(1/3)
-
-
-threads = []
-threadID = 1
-logFiles = []
-environmentPath = ''
-
-# Find log files
-for (dirpath, dirnames, filenames) in walk('c:\\logs\\'):
-    logFiles.extend(filenames)
-    environmentPath = dirpath
-    break
-
-# Create new threads
-for lfile in logFiles:
-    print lfile
-    thread = tailorThread(threadID, environmentPath+lfile)
-    thread.start()
-    threads.append(thread)
-    threadID += 1
-
-
+while True:
+    time.sleep(2)
